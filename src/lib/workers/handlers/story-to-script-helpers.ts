@@ -135,11 +135,55 @@ export async function persistAnalyzedLocations(params: {
   return created
 }
 
+export async function persistAnalyzedProps(params: {
+  projectInternalId: string
+  existingNames: Set<string>
+  analyzedProps: Record<string, unknown>[]
+}) {
+  const created: Array<{ id: string; name: string }> = []
+  const locationModel = prisma.novelPromotionLocation as unknown as {
+    create: (args: { data: Record<string, unknown>; select: { id: true; name: true } }) => Promise<{ id: string; name: string }>
+  }
+
+  for (const item of params.analyzedProps) {
+    const name = asString(item.name).trim()
+    const summary = asString(item.summary).trim()
+    if (!name || !summary) continue
+
+    const key = name.toLowerCase()
+    if (params.existingNames.has(key)) continue
+
+    const prop = await locationModel.create({
+      data: {
+        novelPromotionProjectId: params.projectInternalId,
+        name,
+        summary,
+        assetKind: 'prop',
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    })
+
+    params.existingNames.add(key)
+    created.push(prop)
+  }
+
+  return created
+}
+
 export async function persistClips(params: {
   episodeId: string
   clipList: StoryToScriptClipCandidate[]
 }) {
-  const existing = await prisma.novelPromotionClip.findMany({
+  const clipModel = prisma.novelPromotionClip as unknown as {
+    update: (args: { where: { id: string }; data: Record<string, unknown>; select: { id: true } }) => Promise<{ id: string }>
+    create: (args: { data: Record<string, unknown>; select: { id: true } }) => Promise<{ id: string }>
+    findMany: typeof prisma.novelPromotionClip.findMany
+    deleteMany: typeof prisma.novelPromotionClip.deleteMany
+  }
+  const existing = await clipModel.findMany({
     where: { episodeId: params.episodeId },
     orderBy: { createdAt: 'asc' },
     select: { id: true },
@@ -149,7 +193,7 @@ export async function persistClips(params: {
     const clip = params.clipList[index]
     const target = existing[index]
     if (target) {
-      const updated = await prisma.novelPromotionClip.update({
+      const updated = await clipModel.update({
         where: { id: target.id },
         data: {
           startText: clip.startText,
@@ -157,6 +201,7 @@ export async function persistClips(params: {
           summary: clip.summary,
           location: clip.location,
           characters: clip.characters.length > 0 ? JSON.stringify(clip.characters) : null,
+          props: clip.props.length > 0 ? JSON.stringify(clip.props) : null,
           content: clip.content,
         },
         select: {
@@ -167,7 +212,7 @@ export async function persistClips(params: {
       continue
     }
 
-    const created = await prisma.novelPromotionClip.create({
+    const created = await clipModel.create({
       data: {
         episodeId: params.episodeId,
         startText: clip.startText,
@@ -175,6 +220,7 @@ export async function persistClips(params: {
         summary: clip.summary,
         location: clip.location,
         characters: clip.characters.length > 0 ? JSON.stringify(clip.characters) : null,
+        props: clip.props.length > 0 ? JSON.stringify(clip.props) : null,
         content: clip.content,
       },
       select: {
@@ -186,7 +232,7 @@ export async function persistClips(params: {
 
   const staleClipIds = existing.slice(params.clipList.length).map((item) => item.id)
   if (staleClipIds.length > 0) {
-    await prisma.novelPromotionClip.deleteMany({
+    await clipModel.deleteMany({
       where: {
         id: {
           in: staleClipIds,

@@ -23,6 +23,7 @@ import { AppIcon } from '@/components/ui/icons'
 
 interface LocationCardProps {
   location: Location
+  assetType?: 'location' | 'prop'
   onEdit: () => void
   onDelete: () => void
   onRegenerate: (count?: number) => void
@@ -40,6 +41,7 @@ interface LocationCardProps {
 
 export default function LocationCard({
   location,
+  assetType = 'location',
   onEdit,
   onDelete,
   onRegenerate,
@@ -56,6 +58,7 @@ export default function LocationCard({
   // 🔥 使用 mutation
   const uploadImage = useUploadProjectLocationImage(projectId)
   const t = useTranslations('assets')
+  const assetKey = assetType === 'prop' ? 'prop' : 'location'
   const { count: generationCount, setCount: setGenerationCount } = useImageGenerationCount('location')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [pendingUploadIndex, setPendingUploadIndex] = useState<number | undefined>(undefined)
@@ -218,7 +221,7 @@ export default function LocationCard({
         <button
           onClick={onDelete}
           className="w-6 h-6 rounded hover:bg-[var(--glass-tone-danger-bg)] flex items-center justify-center transition-colors"
-          title={t('location.delete')}
+          title={t(`${assetKey}.delete`)}
         >
           <AppIcon name="trash" className="w-4 h-4 text-[var(--glass-tone-danger-fg)]" />
         </button>
@@ -305,7 +308,7 @@ export default function LocationCard({
           ? 'bg-[var(--glass-tone-success-fg)] hover:bg-[var(--glass-tone-success-fg)]'
           : 'bg-[var(--glass-bg-surface-strong)] hover:bg-[var(--glass-bg-surface)]'
           }`}
-        title={isTaskRunning ? t('image.regenerateStuck') : t('location.regenerateImage')}
+        title={isTaskRunning ? t('image.regenerateStuck') : t(`${assetKey}.regenerateImage`)}
       >
         {isGroupTaskRunning ? (
           <TaskStatusInline state={displayTaskPresentation} className="[&_span]:sr-only [&_svg]:text-white" />
@@ -329,25 +332,25 @@ export default function LocationCard({
   const compactHeaderActions = (
     <>
       {onCopyFromGlobal && (
-        <button
-          onClick={onCopyFromGlobal}
+          <button
+            onClick={onCopyFromGlobal}
           className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-tone-info-bg)] flex items-center justify-center transition-colors"
           title={t('character.copyFromGlobal')}
         >
           <AppIcon name="copy" className="w-3.5 h-3.5 text-[var(--glass-tone-info-fg)]" />
         </button>
       )}
-      <button
-        onClick={onEdit}
+        <button
+          onClick={onEdit}
         className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-bg-muted)] flex items-center justify-center transition-colors"
-        title={t('location.edit')}
+          title={t(`${assetKey}.edit`)}
       >
         <AppIcon name="edit" className="w-3.5 h-3.5 text-[var(--glass-text-secondary)]" />
       </button>
-      <button
-        onClick={onDelete}
+        <button
+          onClick={onDelete}
         className="flex-shrink-0 w-5 h-5 rounded hover:bg-[var(--glass-tone-danger-bg)] flex items-center justify-center transition-colors"
-        title={t('location.delete')}
+          title={t(`${assetKey}.delete`)}
       >
         <AppIcon name="trash" className="w-3.5 h-3.5 text-[var(--glass-tone-danger-fg)]" />
       </button>

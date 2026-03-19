@@ -11,6 +11,10 @@ import type { TaskJobData } from '@/lib/task/types'
 import { buildPrompt, PROMPT_IDS } from '@/lib/prompt-i18n'
 import { resolveAnalysisModel } from './resolve-analysis-model'
 
+function readAssetKind(value: Record<string, unknown>): string {
+  return typeof value.assetKind === 'string' ? value.assetKind : 'location'
+}
+
 function readText(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
@@ -39,6 +43,9 @@ function parseJsonResponse(responseText: string): Record<string, unknown> {
 export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
   const payload = (job.data.payload || {}) as Record<string, unknown>
   const projectId = job.data.projectId
+  const locationModel = prisma.novelPromotionLocation as unknown as {
+    create: (args: { data: Record<string, unknown>; select?: Record<string, boolean> }) => Promise<{ id: string }>
+  }
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -89,7 +96,14 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
   }
 
   const charactersLibName = (novelData.characters || []).map((item) => item.name).join(', ')
-  const locationsLibName = (novelData.locations || []).map((item) => item.name).join(', ')
+  const locationsLibName = (novelData.locations || [])
+    .filter((item) => readAssetKind(item as unknown as Record<string, unknown>) !== 'prop')
+    .map((item) => item.name)
+    .join(', ')
+  const propsLibName = (novelData.locations || [])
+    .filter((item) => readAssetKind(item as unknown as Record<string, unknown>) === 'prop')
+    .map((item) => item.name)
+    .join(', ')
   const characterPromptTemplate = buildPrompt({
     promptId: PROMPT_IDS.NP_AGENT_CHARACTER_PROFILE,
     locale: job.data.locale,
@@ -106,6 +120,14 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
       locations_lib_name: locationsLibName || '无',
     },
   })
+  const propPromptTemplate = buildPrompt({
+    promptId: PROMPT_IDS.NP_SELECT_PROP,
+    locale: job.data.locale,
+    variables: {
+      input: contentToAnalyze,
+      props_lib_name: propsLibName || '无',
+    },
+  })
 
   await reportTaskProgress(job, 20, {
     stage: 'analyze_novel_prepare',
@@ -116,7 +138,7 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
 
   const streamContext = createWorkerLLMStreamContext(job, 'analyze_novel')
   const streamCallbacks = createWorkerLLMStreamCallbacks(job, streamContext)
-  const [characterCompletion, locationCompletion] = await (async () => {
+  const [characterCompletion, locationCompletion, propCompletion] = await (async () => {
     try {
       return await withInternalLLMStreamCallbacks(
         streamCallbacks,
@@ -147,7 +169,21 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
                 stepId: 'analyze_locations',
                 stepTitle: '场景分析',
                 stepIndex: 2,
-                stepTotal: 2,
+                stepTotal: 3,
+              },
+            }),
+            executeAiTextStep({
+              userId: job.data.userId,
+              model: analysisModel,
+              messages: [{ role: 'user', content: propPromptTemplate }],
+              temperature: 0.7,
+              projectId,
+              action: 'analyze_props',
+              meta: {
+                stepId: 'analyze_props',
+                stepTitle: '道具分析',
+                stepIndex: 3,
+                stepTotal: 3,
               },
             }),
           ]),
@@ -159,6 +195,7 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
 
   const characterResponseText = characterCompletion.text
   const locationResponseText = locationCompletion.text
+  const propResponseText = propCompletion.text
 
   await reportTaskProgress(job, 60, {
     stage: 'analyze_novel_characters_done',
@@ -167,7 +204,7 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
     stepId: 'analyze_characters',
     stepTitle: '角色分析',
     stepIndex: 1,
-    stepTotal: 2,
+    stepTotal: 3,
     done: true,
     output: characterResponseText,
   })
@@ -179,18 +216,34 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
     stepId: 'analyze_locations',
     stepTitle: '场景分析',
     stepIndex: 2,
-    stepTotal: 2,
+    stepTotal: 3,
     done: true,
     output: locationResponseText,
   })
 
+  await reportTaskProgress(job, 80, {
+    stage: 'analyze_novel_props_done',
+    stageLabel: '道具分析完成',
+    displayMode: 'detail',
+    stepId: 'analyze_props',
+    stepTitle: '道具分析',
+    stepIndex: 3,
+    stepTotal: 3,
+    done: true,
+    output: propResponseText,
+  })
+
   const charactersData = parseJsonResponse(characterResponseText)
   const locationsData = parseJsonResponse(locationResponseText)
+  const propsData = parseJsonResponse(propResponseText)
   const parsedCharacters = Array.isArray(charactersData.characters)
     ? (charactersData.characters as Array<Record<string, unknown>>)
     : []
   const parsedLocations = Array.isArray(locationsData.locations)
     ? (locationsData.locations as Array<Record<string, unknown>>)
+    : []
+  const parsedProps = Array.isArray(propsData.props)
+    ? (propsData.props as Array<Record<string, unknown>>)
     : []
 
   await reportTaskProgress(job, 75, {
@@ -255,11 +308,11 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
     if (isInvalid) continue
 
     const existsInLibrary = (novelData.locations || []).some(
-      (location) => nameMatchesWithAlias(location.name, name),
+      (location) => readAssetKind(location as unknown as Record<string, unknown>) !== 'prop' && nameMatchesWithAlias(location.name, name),
     )
     if (existsInLibrary) continue
 
-    const created = await prisma.novelPromotionLocation.create({
+    const created = await locationModel.create({
       data: {
         novelPromotionProjectId: novelData.id,
         name,
@@ -282,6 +335,33 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
     createdLocations.push(created)
   }
 
+  const existingPropNameSet = new Set(
+    (novelData.locations || [])
+      .filter((item) => readAssetKind(item as unknown as Record<string, unknown>) === 'prop')
+      .map((item) => item.name.toLowerCase()),
+  )
+  const createdProps: Array<{ id: string }> = []
+  for (const item of parsedProps) {
+    const name = readText(item.name).trim()
+    const summary = readText(item.summary).trim()
+    if (!name || !summary) continue
+
+    const normalizedName = name.toLowerCase()
+    if (existingPropNameSet.has(normalizedName)) continue
+
+    const created = await locationModel.create({
+      data: {
+        novelPromotionProjectId: novelData.id,
+        name,
+        summary,
+        assetKind: 'prop',
+      },
+      select: { id: true },
+    })
+    existingPropNameSet.add(normalizedName)
+    createdProps.push(created)
+  }
+
   await prisma.novelPromotionProject.update({
     where: { id: novelData.id },
     data: {
@@ -299,7 +379,9 @@ export async function handleAnalyzeNovelTask(job: Job<TaskJobData>) {
     success: true,
     characters: createdCharacters,
     locations: createdLocations,
+    props: createdProps,
     characterCount: createdCharacters.length,
     locationCount: createdLocations.length,
+    propCount: createdProps.length,
   }
 }

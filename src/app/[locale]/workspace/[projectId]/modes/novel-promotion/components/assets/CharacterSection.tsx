@@ -47,6 +47,8 @@ interface CharacterSectionProps {
     onCopyFromGlobal: (characterId: string) => void  // 🆕 从资产中心复制
     // 辅助函数
     getAppearances: (character: Character) => CharacterAppearance[]
+    /** 分集筛选：仅显示指定 ID 的角色，null 表示显示全部 */
+    filterIds?: Set<string> | null
 }
 
 export default function CharacterSection({
@@ -74,7 +76,8 @@ export default function CharacterSection({
     onVoiceDesign,
     onVoiceSelectFromHub,
     onCopyFromGlobal,
-    getAppearances
+    getAppearances,
+    filterIds = null,
 }: CharacterSectionProps) {
     const t = useTranslations('assets')
     const analyzingAssetsState = isAnalyzingAssets
@@ -86,9 +89,12 @@ export default function CharacterSection({
         })
         : null
 
-    // 🔥 V6.5 重构：直接订阅缓存，消除 props drilling
     const { data: assets } = useProjectAssets(projectId)
-    const characters: Character[] = useMemo(() => assets?.characters ?? [], [assets?.characters])
+    const allCharacters: Character[] = useMemo(() => assets?.characters ?? [], [assets?.characters])
+    const characters: Character[] = useMemo(
+        () => filterIds ? allCharacters.filter((c) => filterIds.has(c.id)) : allCharacters,
+        [allCharacters, filterIds],
+    )
     const [highlightedCharacterId, setHighlightedCharacterId] = useState<string | null>(null)
     const scrollAnimationRef = useRef<number | null>(null)
 

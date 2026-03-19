@@ -137,8 +137,10 @@ describe('worker analyze-novel behavior', () => {
       success: true,
       characters: [{ id: 'char-new-1' }],
       locations: [{ id: 'loc-new-1' }],
+      props: [],
       characterCount: 1,
       locationCount: 1,
+      propCount: 0,
     })
 
     expect(prismaMock.novelPromotionCharacter.create).toHaveBeenCalledWith(

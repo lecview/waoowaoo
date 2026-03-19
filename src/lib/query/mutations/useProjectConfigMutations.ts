@@ -45,14 +45,18 @@ export function useCopyProjectAssetFromGlobal(projectId: string) {
             targetId,
             globalAssetId,
         }: {
-            type: 'character' | 'location' | 'voice'
+            type: 'character' | 'location' | 'prop' | 'voice'
             targetId: string
             globalAssetId: string
         }) => {
-            return await requestJsonWithError(`/api/novel-promotion/${projectId}/copy-from-global`, {
+            return await requestJsonWithError(`/api/assets/${targetId}/copy`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type, targetId, globalAssetId }),
+                body: JSON.stringify({
+                    kind: type,
+                    projectId,
+                    globalAssetId,
+                }),
             }, 'Failed to copy from global')
         },
         onSuccess: invalidateProjectAssets,

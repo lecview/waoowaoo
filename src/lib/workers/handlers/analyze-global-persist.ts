@@ -6,6 +6,7 @@ import {
   toStringArray,
   type AnalyzeGlobalCharactersData,
   type AnalyzeGlobalLocationsData,
+  type AnalyzeGlobalPropsData,
   type CharacterBrief,
 } from './analyze-global-parse'
 
@@ -15,8 +16,10 @@ export type AnalyzeGlobalStats = {
   newCharacters: number
   updatedCharacters: number
   newLocations: number
+  newProps: number
   skippedCharacters: number
   skippedLocations: number
+  skippedProps: number
 }
 
 export function createAnalyzeGlobalStats(totalChunks: number): AnalyzeGlobalStats {
@@ -26,8 +29,10 @@ export function createAnalyzeGlobalStats(totalChunks: number): AnalyzeGlobalStat
     newCharacters: 0,
     updatedCharacters: 0,
     newLocations: 0,
+    newProps: 0,
     skippedCharacters: 0,
     skippedLocations: 0,
+    skippedProps: 0,
   }
 }
 
@@ -35,12 +40,18 @@ export async function persistAnalyzeGlobalChunk(params: {
   projectInternalId: string
   charactersData: AnalyzeGlobalCharactersData
   locationsData: AnalyzeGlobalLocationsData
+  propsData: AnalyzeGlobalPropsData
   existingCharacters: CharacterBrief[]
   existingCharacterNames: string[]
   existingLocationNames: string[]
   existingLocationInfo: string[]
+  existingPropNames: string[]
   stats: AnalyzeGlobalStats
 }) {
+  const locationModel = prisma.novelPromotionLocation as unknown as {
+    create: (args: { data: Record<string, unknown>; select?: Record<string, boolean> }) => Promise<{ id: string }>
+  }
+
   for (const char of params.charactersData.new_characters || []) {
     const name = readText(char.name).trim()
     const aliases = toStringArray(char.aliases)
@@ -185,6 +196,36 @@ export async function persistAnalyzeGlobalChunk(params: {
       params.stats.newLocations += 1
     } catch {
       params.stats.skippedLocations += 1
+    }
+  }
+
+  for (const prop of params.propsData.props || []) {
+    const name = readText(prop.name).trim()
+    const summary = readText(prop.summary).trim()
+    if (!name || !summary) {
+      params.stats.skippedProps += 1
+      continue
+    }
+
+    const exists = params.existingPropNames.some((item) => item.toLowerCase() === name.toLowerCase())
+    if (exists) {
+      params.stats.skippedProps += 1
+      continue
+    }
+
+    try {
+      await locationModel.create({
+        data: {
+          novelPromotionProjectId: params.projectInternalId,
+          name,
+          summary,
+          assetKind: 'prop',
+        },
+      })
+      params.existingPropNames.push(name)
+      params.stats.newProps += 1
+    } catch {
+      params.stats.skippedProps += 1
     }
   }
 }
