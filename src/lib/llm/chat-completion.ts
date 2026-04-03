@@ -363,7 +363,7 @@ export async function chatCompletion(
         throw new Error(`PROVIDER_BASE_URL_MISSING: ${provider} (llm)`)
       }
 
-      const isOpenRouter = !!providerConfig.baseUrl?.includes('openrouter')
+      const isOpenRouter = !!providerConfig.baseUrl?.includes('openrouter') || providerKey === 'openai-compatible'
       const providerName = isOpenRouter ? 'openrouter' : 'openai_compatible'
       if (!isOpenRouter) {
         const aiOpenAI = createOpenAI({
