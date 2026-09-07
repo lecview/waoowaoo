@@ -15,8 +15,8 @@ export const sub2ApiProviderManifest = defineAiProviderManifest({
   providerKey: 'sub2api',
   adapter: sub2ApiAdapter,
   apiConfig: {
-    visibility: 'hidden',
-    name: 'Sub2API',
+    visibility: 'visible',
+    name: 'Sub2API / AIMasker',
     baseUrl: SUB2API_DEFAULT_BASE_URL,
   },
   platformCredentials: {
@@ -36,4 +36,3 @@ export const sub2ApiProviderManifest = defineAiProviderManifest({
     { modality: 'video', transports: { image: BOTH_TRANSPORTS, audio: BOTH_TRANSPORTS, video: BOTH_TRANSPORTS } },
   ],
 })
-
