@@ -8,7 +8,7 @@ const withNextIntl = createNextIntlPlugin('./src/i18n.ts');
 interface EditionNextConfigManifest {
   readonly scriptOrigins: readonly string[]
   readonly frameOrigins: readonly string[]
-  readonly imageRemotePatterns: readonly Array<{
+  readonly imageRemotePatterns: ReadonlyArray<{
     readonly protocol: 'https'
     readonly hostname: string
   }>
