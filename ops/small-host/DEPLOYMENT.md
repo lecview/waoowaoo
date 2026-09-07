@@ -60,4 +60,5 @@
 - 自定义镜像通过本机回环 Registry 取得不可变 digest，并按 green Worker promote、Web 切换、blue Worker drained/retire 顺序发布。
 - 已完成生产构建、配置目录测试、HTTPS 200、容器状态、Worker version、加密落盘与无密钥泄漏验证。
 - 未执行任何真实语言、图片或视频生成请求。
-- 最终无计费模型清单复查由上游以 `GROUP_NOT_ALLOWED` 拒绝；部署功能正常，但运营方必须在 Sub2API 后台恢复 Key 所属分组权限或从配置页更换有效 Key。
+- 上游权限调整后，应用使用数据库中加密保存的 Key 复查 `/v1/models`，返回 HTTP 200 和 16 个模型；首发语言、图片、视频模型均在清单中。
+- 本次只执行无计费模型清单查询，未执行真实语言、图片或视频生成。
