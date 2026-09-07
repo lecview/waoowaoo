@@ -35,7 +35,7 @@
 - [x] 首个注册用户已通过 UUID 显式映射为管理员
 - [ ] 多标签页事件流保持响应
 - [x] 未自动执行任何付费 AI 生成
-- [ ] Sub2API 配置中心与模型适配镜像已部署并完成无计费验证
+- [x] Sub2API 配置中心与模型适配镜像已部署并完成无计费验证
 
 局域网 IP 入口启用时，部署端通过私有 Caddy JSON 及 Compose 叠加文件设置 `default_sni`，兼容不发送 SNI 的 IP 字面量客户端；具体地址只保存在本地私有记录。
 
@@ -50,3 +50,14 @@
 - 容器重启：全部 0；OOM：全部 false
 - 最近 10 分钟关键错误关键词计数：全部服务为 0
 - 资源余量、证书指纹、主机地址及代理配置仅记录在本地私有运维档案，不提交 Git。
+
+## 2026-09-07 Sub2API / AIMasker 接入
+
+- 独立功能分支：`feature/sub2api-platform-provider`。
+- 在原有 API 配置中心显示 `Sub2API / AIMasker`，Key 使用应用既有加密机制保存，模型选择可由后台随时修改。
+- 语言使用 OpenAI Responses；图片使用异步 Images 任务；视频使用异步 Videos 任务。
+- 首发默认选择：`gpt-5.6-sol`、`gpt-image-2`、`seedance20`。
+- 自定义镜像通过本机回环 Registry 取得不可变 digest，并按 green Worker promote、Web 切换、blue Worker drained/retire 顺序发布。
+- 已完成生产构建、配置目录测试、HTTPS 200、容器状态、Worker version、加密落盘与无密钥泄漏验证。
+- 未执行任何真实语言、图片或视频生成请求。
+- 最终无计费模型清单复查由上游以 `GROUP_NOT_ALLOWED` 拒绝；部署功能正常，但运营方必须在 Sub2API 后台恢复 Key 所属分组权限或从配置页更换有效 Key。
