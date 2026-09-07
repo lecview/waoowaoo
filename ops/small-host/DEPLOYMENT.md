@@ -2,7 +2,7 @@
 
 ## 2026-09-07 首次部署
 
-状态：服务端部署完成；等待用户批准 Windows 根证书导入和浏览器最终验证
+状态：部署及局域网直连验证完成
 
 ### 部署前基线
 
@@ -30,16 +30,18 @@
 - [x] 长期运行容器健康
 - [x] `http://localhost:13000` 跳转至 HTTPS
 - [x] 公共根证书已仅导出 `root.crt`
-- [ ] 用户批准后在 Windows 信任根证书
-- [ ] 浏览器无证书警告且协议为 HTTP/2（服务端 curl 已确认 HTTP/2）
+- [x] Windows 当前用户已信任部署根证书（仅公钥证书）
+- [x] Windows Edge 直连局域网入口无证书拦截，页面为 HTTP/2
 - [ ] 多标签页事件流保持响应
 - [x] 未自动执行任何付费 AI 生成
 
+局域网 IP 入口启用时，部署端通过私有 Caddy JSON 及 Compose 叠加文件设置 `default_sni`，兼容不发送 SNI 的 IP 字面量客户端；具体地址只保存在本地私有记录。
+
 ### 完成信息
 
-- 完成时间：2026-09-07 12:19 CST
-- 页面：`https://localhost:1443/zh`，服务端校验 HTTP 200 / HTTP/2
-- HTTP 跳转：`http://localhost:13000` 返回 308 至 HTTPS
+- 完成时间：2026-09-07 12:45 CST
+- 页面：局域网 HTTPS 入口，服务端与 Windows Edge 均校验 HTTP 200 / HTTP/2
+- HTTP 跳转：局域网 HTTP 入口返回 308 至 HTTPS
 - Worker：`v0.5.0-beta.1-3275844dc8b6-blue` 为 Current Version，green 停止
 - 长期容器：app、caddy、minio、mysql、redis、temporal、temporal-worker-blue
 - 初始化容器：全部 Exited (0)
