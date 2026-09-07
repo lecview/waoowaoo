@@ -98,19 +98,7 @@ async function resolveSelectedAssistantModel(scope: CodexModelGatewayScope) {
   } catch {
     throw new CodexModelGatewayError('ASSISTANT_MODEL_UNSUPPORTED', 422)
   }
-  if (selection.provider !== 'openrouter') {
-    throw new CodexModelGatewayError(
-      'PROVIDER_RESPONSES_UNSUPPORTED',
-      422,
-    )
-  }
-  ensureAiCatalogsRegistered()
-  const codexRuntimeWireApi = findBuiltinCapabilities(
-    'llm',
-    selection.provider,
-    selection.modelId,
-  )?.llm?.codexRuntimeWireApi
-  if (codexRuntimeWireApi !== 'responses') {
+  if (!supportsCodexResponsesWireApi(selection.provider, selection.modelId)) {
     throw new CodexModelGatewayError(
       'PROVIDER_RESPONSES_UNSUPPORTED',
       422,
@@ -138,6 +126,16 @@ async function resolveSelectedAssistantModel(scope: CodexModelGatewayScope) {
     providerApiKey: providerConfig.apiKey,
     responsesEndpoint: buildResponsesEndpoint(providerBaseUrl),
   }
+}
+
+export function supportsCodexResponsesWireApi(provider: string, modelId: string): boolean {
+  ensureAiCatalogsRegistered()
+  return findBuiltinCapabilities(
+    'llm',
+    provider,
+    modelId,
+  )?.llm?.codexRuntimeWireApi
+    === 'responses'
 }
 
 export async function resolveCodexModelGatewayUpstream(
