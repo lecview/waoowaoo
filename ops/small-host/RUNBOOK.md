@@ -39,10 +39,12 @@ docker compose logs --tail=200 caddy
 
 1. 阅读目标 Release 迁移说明。
 2. 完成备份并记录当前镜像 digest。
-3. 使用空闲 Worker slot 部署新版本并执行 promote。
-4. Web 切换后验证健康和任务状态。
-5. 旧 Worker 完全 drained 后才能 retire。
-6. 禁止以 `docker compose down -v` 作为升级步骤。
+3. 在运维工作站构建、测试并导出 OCI 镜像；资源受限的部署主机不执行生产编译。
+4. 通过 SSH 将镜像传输到部署主机，再写入仅绑定回环地址的 Registry，并记录不可变 digest。
+5. 使用空闲 Worker slot 部署新版本并执行 promote。
+6. Web 切换后验证健康和任务状态。
+7. 旧 Worker 完全 drained 后才能 retire。
+8. 禁止以 `docker compose down -v` 作为升级步骤。
 
 ## 回滚原则
 

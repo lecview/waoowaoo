@@ -64,3 +64,11 @@
 - 本次只执行无计费模型清单查询，未执行真实语言、图片或视频生成。
 - 后台已启用 4 个语言模型：`gpt-5.6-luna`、`gpt-5.6-sol`、`gpt-5.6-terra`、`gpt-6-astra`；图片与视频分别启用 `gpt-image-2`、`seedance20`。
 - 默认 Assistant 为 `gpt-5.6-sol`；最终验证确认加密凭据、6 个启用模型、上游模型清单和局域网页面均正常。
+
+## 2026-09-07 项目助手 Sub2API 网关修复
+
+- 项目创建后的 Assistant 已选择后台默认模型，但 Codex 网关此前存在 OpenRouter 名称白名单，导致 Sub2API 在真正请求上游前被拒绝。
+- 网关已改为按模型目录中的 Responses 能力判断，不再写死供应商名称。
+- 部署提交：`a7b8f38`；应用与 Current Worker 使用同一不可变镜像 digest。
+- 验证确认项目模型解析为 `sub2api::gpt-5.6-sol`，Responses 端点和加密凭据均可用；局域网页面 HTTP 200，应用与 Worker 无重启、无 OOM。
+- 未执行真实付费模型生成。

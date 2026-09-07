@@ -27,3 +27,10 @@
 - 计费：自托管部署保持 `BILLING_MODE=OFF`；目录中的零价格只表示平台自身不扣积分，不代表上游请求免费。
 - 验证：TypeScript、ESLint、供应商目录一致性及图片/视频请求契约测试；真实生成需另行授权。
 - 回滚：恢复上一应用镜像与 Worker build；数据库中的供应商配置可保留，旧版本会忽略未知 provider。
+
+### 项目助手使用 Sub2API
+
+- 原因：项目助手的 Codex 模型网关曾额外写死只接受 OpenRouter，即使后台已选择 Sub2API，也会在请求上游前返回 `PROVIDER_RESPONSES_UNSUPPORTED`。
+- 修改：移除供应商名称白名单，改为只依据已注册模型的 `codexRuntimeWireApi=responses` 能力判断；Sub2API 与其他明确声明 Responses 能力的供应商均可使用。
+- 验证：新增网关选择回归测试；生产构建、TypeScript、局域网 HTTP、镜像 digest、Worker promote 和项目级模型解析均通过。
+- 回滚：恢复上一应用镜像与 Worker build；无需回滚数据库模型配置。
